@@ -1,0 +1,41 @@
+services:
+  namesrv:
+    image: apache/rocketmq:5.3.1
+    container_name: rmqnamesrv
+    ports:
+      - "9876:9876"
+    environment:
+      JAVA_OPT_EXT: "-server -Xms256m -Xmx256m"
+    command: sh mqnamesrv
+    volumes:
+      - ./data/namesrv/logs:/home/rocketmq/logs
+    restart: unless-stopped
+
+  broker:
+    image: apache/rocketmq:5.3.1
+    container_name: rmqbroker
+    depends_on:
+      - namesrv
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+      - "10912:10912"
+    environment:
+      NAMESRV_ADDR: "namesrv:9876"
+      JAVA_OPT_EXT: "-server -Xms512m -Xmx512m -Xmn256m"
+    command: sh mqbroker -n namesrv:9876 --enable-proxy
+    volumes:
+      - ./data/broker/logs:/home/rocketmq/logs
+      - ./data/broker/store:/home/rocketmq/store
+    restart: unless-stopped
+
+  dashboard:
+    image: apacherocketmq/rocketmq-dashboard:latest
+    container_name: rmqdashboard
+    depends_on:
+      - namesrv
+    ports:
+      - "10913:8080"
+    environment:
+      JAVA_OPTS: "-Drocketmq.namesrv.addr=namesrv:9876 -Dcom.rocketmq.sendMessageWithVIPChannel=false"
+    restart: unless-stopped
